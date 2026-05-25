@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Find rewards, loyalty, login, gift card, offers, coupon, account, and app pages on merchant websites with confidence scores and evidence.",
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node main.js""
   },
   "dependencies": {
     "apify": "^3.4.4",
