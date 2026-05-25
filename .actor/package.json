@@ -1,13 +1,13 @@
 {
   "name": "merchant-key-page-finder",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Find rewards, loyalty, login, gift card, offers, coupon, account, and app pages on merchant websites with confidence scores and evidence.",
   "scripts": {
-    "start": "node main.js""
+    "start": "node main.js"
   },
   "dependencies": {
-    "apify": "^3.4.4",
-    "crawlee": "^3.15.1"
+    "apify": "^3.7.2",
+    "crawlee": "^3.16.0"
   }
 }
