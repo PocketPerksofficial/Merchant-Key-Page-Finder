@@ -1,1 +1,10 @@
-
+{
+  "actorSpecification": 1,
+  "name": "merchant-key-page-finder",
+  "title": "Merchant Key Page Finder",
+  "description": "Find rewards, loyalty, login, gift card, offers, coupon, account, and app pages on merchant websites with confidence scores and evidence.",
+  "version": "0.0",
+  "buildTag": "latest",
+  "env": null,
+  "input": "./INPUT_SCHEMA.json"
+}
