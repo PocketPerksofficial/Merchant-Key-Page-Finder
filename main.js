@@ -48,33 +48,72 @@ function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
 }
 
-function classifyPage(url, title, text) {
+function testAny(text, patterns) {
+    return patterns.some((rx) => rx.test(text));
+}
+
+function classifySignals(url, title, text) {
     const haystack = `${url} ${title} ${text}`;
-    const matchedTypes = pageRules
-        .filter((rule) => rule.rx.test(haystack))
-        .map((rule) => rule.type);
 
-    const uniqueMatches = [...new Set(matchedTypes)];
+    const hasAccountAccess = testAny(haystack, [
+        /account/i,
+        /sign[\s-]?in/i,
+        /log[\s-]?in/i,
+        /login/i,
+        /sign[\s-]?up/i,
+        /create account/i,
+        /create your account/i,
+        /register/i,
+    ]);
 
-    let score = 0;
+    const hasRewardsProgram = testAny(haystack, [
+        /rewards?/i,
+        /loyalty/i,
+        /membership/i,
+        /member benefits/i,
+        /member pricing/i,
+        /points?/i,
+        /vip/i,
+    ]);
 
-    if (/reward|rewards|circle|loyalty/i.test(url)) score += 35;
-    if (/gift[-\s]?card|card/i.test(url)) score += 30;
-    if (/weekly[-/]?ad|weekly ad/i.test(url)) score += 30;
-    if (/deal|deals|offer|offers|coupon|promo/i.test(url)) score += 20;
-    if (/account|login|sign[\s-]?in/i.test(url)) score += 25;
-    if (/app/i.test(url)) score += 10;
-    if (/registry|wish/i.test(url)) score += 20;
+    const hasExclusiveMemberOffers = testAny(haystack, [
+        /exclusive/i,
+        /member-only/i,
+        /members only/i,
+        /loyalty pricing/i,
+        /redeemable points/i,
+        /earn points/i,
+        /free shipping/i,
+        /monthly freebies/i,
+        /special discount/i,
+        /save with membership/i,
+    ]);
 
-    if (/reward|loyalty|gift card|weekly ad|deal|offer|account|login|app|registry/i.test(title)) score += 20;
+    const hasPublicDeals = testAny(haystack, [
+        /deal|deals/i,
+        /offer|offers/i,
+        /coupon|coupons/i,
+        /promo|promotion/i,
+        /sale|sales/i,
+        /weekly ad/i,
+    ]);
 
-    score += uniqueMatches.length * 10;
+    let retailerCategory = 'needs-review';
 
-    score = Math.min(100, score);
+    if (hasAccountAccess && hasRewardsProgram && hasExclusiveMemberOffers) {
+        retailerCategory = 'qualified-loyalty-retailer';
+    } else if (hasAccountAccess && !hasRewardsProgram) {
+        retailerCategory = 'account-only-retailer';
+    } else if (hasPublicDeals && !hasRewardsProgram) {
+        retailerCategory = 'sales-only-retailer';
+    }
 
     return {
-        matchedTypes: uniqueMatches,
-        score,
+        hasAccountAccess,
+        hasRewardsProgram,
+        hasExclusiveMemberOffers,
+        hasPublicDeals,
+        retailerCategory,
     };
 }
 
@@ -99,20 +138,27 @@ const crawler = new CheerioCrawler({
 
         log.info(`Visited: ${url}`);
 
-        const { matchedTypes, score } = classifyPage(url, title, bodyText);
+       const signals = classifySignals(url, title, bodyText);
 
-        if (shouldKeepResult(url, title, matchedTypes, score)) {
-            await Actor.pushData({
-                url,
-                title,
-                sourceUrl: request.userData.sourceUrl,
-                depth,
-                pageType: matchedTypes[0] ?? 'generic',
-                matchedKeywords: matchedTypes,
-                score,
-                evidence: bodyText.slice(0, 500),
-            });
-        }
+if (
+    signals.hasAccountAccess ||
+    signals.hasRewardsProgram ||
+    signals.hasExclusiveMemberOffers ||
+    signals.hasPublicDeals
+) {
+    await Actor.pushData({
+        url,
+        title,
+        sourceUrl: request.userData.sourceUrl,
+        depth,
+        hasAccountAccess: signals.hasAccountAccess,
+        hasRewardsProgram: signals.hasRewardsProgram,
+        hasExclusiveMemberOffers: signals.hasExclusiveMemberOffers,
+        hasPublicDeals: signals.hasPublicDeals,
+        retailerCategory: signals.retailerCategory,
+        evidence: bodyText.slice(0, 500),
+    });
+}
 
         if (depth < maxDepth) {
             await enqueueLinks({
