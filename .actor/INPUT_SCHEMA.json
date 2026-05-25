@@ -10,10 +10,11 @@
       "description": "One or more merchant website URLs to scan.",
       "editor": "stringList",
       "default": [],
-      "prefill": [],
+      "prefill": [
+        "https://www.bk.com"
+      ],
       "items": {
-        "type": "string",
-        "title": "URL"
+        "type": "string"
       }
     },
     "maxPages": {
@@ -22,8 +23,7 @@
       "description": "Maximum pages to crawl per website.",
       "default": 25,
       "minimum": 1,
-      "maximum": 500,
-      "editor": "number"
+      "maximum": 500
     },
     "maxDepth": {
       "title": "Max depth",
@@ -31,15 +31,13 @@
       "description": "How many link hops away from the starting URL to explore.",
       "default": 2,
       "minimum": 0,
-      "maximum": 10,
-      "editor": "number"
+      "maximum": 10
     },
     "sameDomainOnly": {
       "title": "Same domain only",
       "type": "boolean",
       "description": "Only crawl pages on the same domain as the start URL.",
-      "default": true,
-      "editor": "checkbox"
+      "default": true
     }
   },
   "required": ["startUrls"]
