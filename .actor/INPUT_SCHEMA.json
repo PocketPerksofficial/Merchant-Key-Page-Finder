@@ -1,1 +1,46 @@
-
+{
+  "title": "Merchant Key Page Finder",
+  "type": "object",
+  "schemaVersion": 1,
+  "description": "Find rewards, loyalty, login, gift card, offers, coupon, account, and app pages on merchant websites.",
+  "properties": {
+    "startUrls": {
+      "title": "Start URLs",
+      "type": "array",
+      "description": "One or more merchant website URLs to scan.",
+      "editor": "stringList",
+      "default": [],
+      "prefill": [],
+      "items": {
+        "type": "string",
+        "title": "URL"
+      }
+    },
+    "maxPages": {
+      "title": "Max pages",
+      "type": "integer",
+      "description": "Maximum pages to crawl per website.",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 500,
+      "editor": "number"
+    },
+    "maxDepth": {
+      "title": "Max depth",
+      "type": "integer",
+      "description": "How many link hops away from the starting URL to explore.",
+      "default": 2,
+      "minimum": 0,
+      "maximum": 10,
+      "editor": "number"
+    },
+    "sameDomainOnly": {
+      "title": "Same domain only",
+      "type": "boolean",
+      "description": "Only crawl pages on the same domain as the start URL.",
+      "default": true,
+      "editor": "checkbox"
+    }
+  },
+  "required": ["startUrls"]
+}
