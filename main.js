@@ -42,27 +42,118 @@ function testAny(text, patterns) {
     return patterns.some((rx) => rx.test(text));
 }
 
+function getUrlParts(rawUrl) {
+    try {
+        const u = new URL(rawUrl);
+        return {
+            href: u.href,
+            pathname: (u.pathname || '').toLowerCase(),
+            search: (u.search || '').toLowerCase(),
+            hostname: (u.hostname || '').toLowerCase(),
+        };
+    } catch {
+        return {
+            href: rawUrl || '',
+            pathname: '',
+            search: '',
+            hostname: '',
+        };
+    }
+}
+
 function isLikelyUtilityPage(url, title) {
-    const haystack = `${url} ${title}`;
+    const { pathname } = getUrlParts(url);
+    const titleText = (title || '').toLowerCase();
+
+    const utilityPathPatterns = [
+        /\/help(\/|$)/i,
+        /\/support(\/|$)/i,
+        /\/contact(\/|$)/i,
+        /\/contact-us(\/|$)/i,
+        /\/customer-service(\/|$)/i,
+        /\/returns?(\/|$)/i,
+        /\/refunds?(\/|$)/i,
+        /\/orders?(\/|$)/i,
+        /\/order-status(\/|$)/i,
+        /\/track(\/|$)/i,
+        /\/tracking(\/|$)/i,
+        /\/shipping(\/|$)/i,
+        /\/delivery(\/|$)/i,
+        /\/store-locator(\/|$)/i,
+        /\/store(s)?(\/|$)/i,
+        /\/locations?(\/|$)/i,
+        /\/privacy(\/|$)/i,
+        /\/privacy-policy(\/|$)/i,
+        /\/terms(\/|$)/i,
+        /\/terms-and-conditions(\/|$)/i,
+        /\/accessibility(\/|$)/i,
+        /\/legal(\/|$)/i,
+        /\/faq(s)?(\/|$)/i,
+        /\/faqs(\/|$)/i,
+        /\/recalls?(\/|$)/i,
+    ];
+
+    const utilityTitlePatterns = [
+        /\bhelp\b/i,
+        /\bsupport\b/i,
+        /contact us/i,
+        /customer service/i,
+        /return policy/i,
+        /\breturns\b/i,
+        /\brefunds\b/i,
+        /\border(s)?\b/i,
+        /order status/i,
+        /track( my)? order/i,
+        /shipping/i,
+        /delivery/i,
+        /find stores/i,
+        /store locator/i,
+        /stores near me/i,
+        /privacy policy/i,
+        /\bprivacy\b/i,
+        /\bterms\b/i,
+        /accessibility/i,
+        /\blegal\b/i,
+        /\bfaq\b/i,
+        /\bfaqs\b/i,
+        /product recalls?/i,
+    ];
+
+    return testAny(pathname, utilityPathPatterns) || testAny(titleText, utilityTitlePatterns);
+}
+
+function hasStrongUtilityOverride(url, title, text) {
+    const haystack = `${url} ${title} ${text}`;
 
     return testAny(haystack, [
-        /\/help\b/i,
-        /\/help\//i,
-        /\/returns\b/i,
-        /\/orders\b/i,
-        /\/store-locator\b/i,
-        /contact us/i,
-        /privacy policy/i,
-        /accessibility/i,
-        /product recalls?/i,
-        /find stores/i,
-        /stores near me/i,
+        /join (free|now)/i,
+        /sign[\s-]?in or create account/i,
+        /create account/i,
+        /member-only/i,
+        /members only/i,
+        /exclusive discounts?/i,
+        /unlock exclusive discounts?/i,
+        /earn points?/i,
+        /redeemable points?/i,
+        /save with membership/i,
+        /loyalty program/i,
+        /rewards program/i,
+        /free shipping/i,
+        /monthly freebies/i,
+        /special member pricing/i,
+        /special membership discount/i,
+        /verified.*save/i,
+        /discounts? for verified/i,
+        /join.*rewards/i,
+        /join.*membership/i,
     ]);
 }
 
 function classifySignals(url, title, text) {
     const haystack = `${url} ${title} ${text}`;
+    const { pathname, search } = getUrlParts(url);
     const utilityPage = isLikelyUtilityPage(url, title);
+    const strongUtilityOverride = hasStrongUtilityOverride(url, title, text);
 
     const hasAccountAccess = testAny(haystack, [
         /account/i,
@@ -73,6 +164,7 @@ function classifySignals(url, title, text) {
         /create account/i,
         /create your account/i,
         /register/i,
+        /my account/i,
         /card management/i,
         /manage your card/i,
     ]);
@@ -80,13 +172,18 @@ function classifySignals(url, title, text) {
     const hasRewardsProgram = testAny(haystack, [
         /rewards?/i,
         /loyalty/i,
-        /target circle/i,
         /membership/i,
         /member benefits/i,
         /member pricing/i,
         /points?/i,
         /vip/i,
-        /circle 360/i,
+        /rewards club/i,
+        /loyalty program/i,
+        /rewards program/i,
+        /member perks/i,
+        /cash back/i,
+        /club\b/i,
+        /circle\b/i,
     ]);
 
     const hasExclusiveMemberOffers = testAny(haystack, [
@@ -104,6 +201,8 @@ function classifySignals(url, title, text) {
         /discounts? for verified/i,
         /unlock exclusive discounts?/i,
         /save even more/i,
+        /member pricing/i,
+        /member deals/i,
     ]);
 
     const hasPublicDeals = testAny(haystack, [
@@ -120,20 +219,38 @@ function classifySignals(url, title, text) {
         /up to \d+% off/i,
         /\bclearance\b/i,
         /\bdiscount\b/i,
+        /\bspecial offer\b/i,
+    ]);
+
+    const urlLooksLikePromoPage = testAny(`${pathname} ${search} ${title}`, [
+        /deal/i,
+        /offer/i,
+        /coupon/i,
+        /promo/i,
+        /sale/i,
+        /clearance/i,
+        /rewards?/i,
+        /loyalty/i,
+        /membership/i,
+        /member/i,
+        /vip/i,
+        /club/i,
+        /circle/i,
+        /perks/i,
     ]);
 
     let retailerCategory = 'needs-review';
 
-    if (utilityPage && !hasExclusiveMemberOffers && !hasRewardsProgram) {
+    if (utilityPage && !strongUtilityOverride && !urlLooksLikePromoPage) {
         retailerCategory = 'ignore-utility-page';
     } else if (hasRewardsProgram && (hasExclusiveMemberOffers || hasPublicDeals)) {
         retailerCategory = 'qualified-loyalty-retailer';
     } else if (hasAccountAccess && hasRewardsProgram) {
         retailerCategory = 'loyalty-retailer';
-    } else if (hasAccountAccess) {
-        retailerCategory = 'account-only-retailer';
-    } else if (hasPublicDeals) {
+    } else if (hasPublicDeals && !utilityPage) {
         retailerCategory = 'sales-only-retailer';
+    } else if (hasAccountAccess && !utilityPage) {
+        retailerCategory = 'account-only-retailer';
     }
 
     return {
@@ -143,6 +260,8 @@ function classifySignals(url, title, text) {
         hasPublicDeals,
         retailerCategory,
         utilityPage,
+        strongUtilityOverride,
+        urlLooksLikePromoPage,
     };
 }
 
@@ -160,15 +279,7 @@ const crawler = new CheerioCrawler({
 
         const signals = classifySignals(url, title, bodyText);
 
-        if (
-            signals.retailerCategory !== 'ignore-utility-page' &&
-            (
-                signals.hasAccountAccess ||
-                signals.hasRewardsProgram ||
-                signals.hasExclusiveMemberOffers ||
-                signals.hasPublicDeals
-            )
-        ) {
+        if (signals.retailerCategory !== 'ignore-utility-page') {
             await Actor.pushData({
                 url,
                 title,
@@ -180,6 +291,8 @@ const crawler = new CheerioCrawler({
                 hasPublicDeals: signals.hasPublicDeals,
                 retailerCategory: signals.retailerCategory,
                 utilityPage: signals.utilityPage,
+                strongUtilityOverride: signals.strongUtilityOverride,
+                urlLooksLikePromoPage: signals.urlLooksLikePromoPage,
                 evidence: bodyText.slice(0, 500),
             });
         }
