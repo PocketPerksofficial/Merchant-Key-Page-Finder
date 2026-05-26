@@ -34,16 +34,6 @@ for (const urlItem of startUrls) {
     });
 }
 
-const pageRules = [
-    { type: 'rewards', rx: /reward|rewards|circle|loyalty/i },
-    { type: 'gift-card', rx: /gift[-\s]?card|card management|reloadable card/i },
-    { type: 'weekly-ad', rx: /weekly ad|weekly deal|weekly-ad/i },
-    { type: 'offers', rx: /deal|deals|offer|offers|coupon|promo/i },
-    { type: 'account', rx: /account|sign[\s-]?in|login|create account/i },
-    { type: 'app', rx: /app|download the app|mobile app/i },
-    { type: 'registry', rx: /registry|wish list/i },
-];
-
 function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
 }
@@ -117,15 +107,6 @@ function classifySignals(url, title, text) {
     };
 }
 
-function shouldKeepResult(url, title, matchedTypes, score) {
-    if (matchedTypes.length === 0) return false;
-
-    const strongUrlPattern = /reward|rewards|circle|loyalty|gift[-\s]?card|weekly[-/]?ad|deal|deals|offer|offers|coupon|promo|account|login|sign[\s-]?in|registry|wish|app/i;
-    const strongTitlePattern = /reward|rewards|circle|loyalty|gift card|weekly ad|deal|deals|offer|offers|account|login|registry|wish|app/i;
-
-    return score >= 35 || strongUrlPattern.test(url) || strongTitlePattern.test(title);
-}
-
 const crawler = new CheerioCrawler({
     requestQueue,
     maxRequestsPerCrawl: maxPages,
@@ -138,27 +119,27 @@ const crawler = new CheerioCrawler({
 
         log.info(`Visited: ${url}`);
 
-       const signals = classifySignals(url, title, bodyText);
+        const signals = classifySignals(url, title, bodyText);
 
-if (
-    signals.hasAccountAccess ||
-    signals.hasRewardsProgram ||
-    signals.hasExclusiveMemberOffers ||
-    signals.hasPublicDeals
-) {
-    await Actor.pushData({
-        url,
-        title,
-        sourceUrl: request.userData.sourceUrl,
-        depth,
-        hasAccountAccess: signals.hasAccountAccess,
-        hasRewardsProgram: signals.hasRewardsProgram,
-        hasExclusiveMemberOffers: signals.hasExclusiveMemberOffers,
-        hasPublicDeals: signals.hasPublicDeals,
-        retailerCategory: signals.retailerCategory,
-        evidence: bodyText.slice(0, 500),
-    });
-}
+        if (
+            signals.hasAccountAccess ||
+            signals.hasRewardsProgram ||
+            signals.hasExclusiveMemberOffers ||
+            signals.hasPublicDeals
+        ) {
+            await Actor.pushData({
+                url,
+                title,
+                sourceUrl: request.userData.sourceUrl,
+                depth,
+                hasAccountAccess: signals.hasAccountAccess,
+                hasRewardsProgram: signals.hasRewardsProgram,
+                hasExclusiveMemberOffers: signals.hasExclusiveMemberOffers,
+                hasPublicDeals: signals.hasPublicDeals,
+                retailerCategory: signals.retailerCategory,
+                evidence: bodyText.slice(0, 500),
+            });
+        }
 
         if (depth < maxDepth) {
             await enqueueLinks({
