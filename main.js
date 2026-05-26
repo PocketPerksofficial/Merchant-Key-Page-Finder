@@ -80,7 +80,7 @@ function isLikelyUtilityPage(url, title) {
         /\/shipping(\/|$)/i,
         /\/delivery(\/|$)/i,
         /\/store-locator(\/|$)/i,
-        /\/store(s)?(\/|$)/i,
+        /\/stores?(\/|$)/i,
         /\/locations?(\/|$)/i,
         /\/privacy(\/|$)/i,
         /\/privacy-policy(\/|$)/i,
@@ -89,7 +89,6 @@ function isLikelyUtilityPage(url, title) {
         /\/accessibility(\/|$)/i,
         /\/legal(\/|$)/i,
         /\/faq(s)?(\/|$)/i,
-        /\/faqs(\/|$)/i,
         /\/recalls?(\/|$)/i,
     ];
 
@@ -115,7 +114,6 @@ function isLikelyUtilityPage(url, title) {
         /accessibility/i,
         /\blegal\b/i,
         /\bfaq\b/i,
-        /\bfaqs\b/i,
         /product recalls?/i,
     ];
 
@@ -184,6 +182,7 @@ function classifySignals(url, title, text) {
         /cash back/i,
         /club\b/i,
         /circle\b/i,
+        /perks/i,
     ]);
 
     const hasExclusiveMemberOffers = testAny(haystack, [
@@ -237,13 +236,12 @@ function classifySignals(url, title, text) {
         /club/i,
         /circle/i,
         /perks/i,
+        /discount/i,
     ]);
 
     let retailerCategory = 'needs-review';
 
-    if (utilityPage && !strongUtilityOverride && !urlLooksLikePromoPage) {
-        retailerCategory = 'ignore-utility-page';
-    } else if (hasRewardsProgram && (hasExclusiveMemberOffers || hasPublicDeals)) {
+    if (hasRewardsProgram && (hasExclusiveMemberOffers || hasPublicDeals)) {
         retailerCategory = 'qualified-loyalty-retailer';
     } else if (hasAccountAccess && hasRewardsProgram) {
         retailerCategory = 'loyalty-retailer';
@@ -251,6 +249,8 @@ function classifySignals(url, title, text) {
         retailerCategory = 'sales-only-retailer';
     } else if (hasAccountAccess && !utilityPage) {
         retailerCategory = 'account-only-retailer';
+    } else if (utilityPage) {
+        retailerCategory = 'ignore-utility-page';
     }
 
     return {
@@ -279,7 +279,21 @@ const crawler = new CheerioCrawler({
 
         const signals = classifySignals(url, title, bodyText);
 
-        if (signals.retailerCategory !== 'ignore-utility-page') {
+        const keepUtilityPage =
+            !signals.utilityPage ||
+            signals.strongUtilityOverride ||
+            signals.urlLooksLikePromoPage ||
+            signals.hasExclusiveMemberOffers;
+
+        if (
+            keepUtilityPage &&
+            (
+                signals.hasAccountAccess ||
+                signals.hasRewardsProgram ||
+                signals.hasExclusiveMemberOffers ||
+                signals.hasPublicDeals
+            )
+        ) {
             await Actor.pushData({
                 url,
                 title,
