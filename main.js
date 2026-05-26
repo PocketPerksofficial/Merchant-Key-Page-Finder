@@ -42,8 +42,27 @@ function testAny(text, patterns) {
     return patterns.some((rx) => rx.test(text));
 }
 
+function isLikelyUtilityPage(url, title) {
+    const haystack = `${url} ${title}`;
+
+    return testAny(haystack, [
+        /\/help\b/i,
+        /\/help\//i,
+        /\/returns\b/i,
+        /\/orders\b/i,
+        /\/store-locator\b/i,
+        /contact us/i,
+        /privacy policy/i,
+        /accessibility/i,
+        /product recalls?/i,
+        /find stores/i,
+        /stores near me/i,
+    ]);
+}
+
 function classifySignals(url, title, text) {
     const haystack = `${url} ${title} ${text}`;
+    const utilityPage = isLikelyUtilityPage(url, title);
 
     const hasAccountAccess = testAny(haystack, [
         /account/i,
@@ -54,47 +73,66 @@ function classifySignals(url, title, text) {
         /create account/i,
         /create your account/i,
         /register/i,
+        /card management/i,
+        /manage your card/i,
     ]);
 
     const hasRewardsProgram = testAny(haystack, [
         /rewards?/i,
         /loyalty/i,
+        /target circle/i,
         /membership/i,
         /member benefits/i,
         /member pricing/i,
         /points?/i,
         /vip/i,
+        /circle 360/i,
     ]);
 
     const hasExclusiveMemberOffers = testAny(haystack, [
-        /exclusive/i,
+        /exclusive discounts?/i,
         /member-only/i,
         /members only/i,
         /loyalty pricing/i,
-        /redeemable points/i,
-        /earn points/i,
+        /redeemable points?/i,
+        /earn points?/i,
         /free shipping/i,
         /monthly freebies/i,
         /special discount/i,
         /save with membership/i,
+        /verified.*save/i,
+        /discounts? for verified/i,
+        /unlock exclusive discounts?/i,
+        /save even more/i,
     ]);
 
     const hasPublicDeals = testAny(haystack, [
-        /deal|deals/i,
-        /offer|offers/i,
-        /coupon|coupons/i,
-        /promo|promotion/i,
-        /sale|sales/i,
+        /deals?/i,
+        /offers?/i,
+        /coupons?/i,
+        /promo/i,
+        /promotion/i,
+        /sales?/i,
         /weekly ad/i,
+        /top deals/i,
+        /current promotions/i,
+        /save \d+%/i,
+        /up to \d+% off/i,
+        /\bclearance\b/i,
+        /\bdiscount\b/i,
     ]);
 
     let retailerCategory = 'needs-review';
 
-    if (hasAccountAccess && hasRewardsProgram && hasExclusiveMemberOffers) {
+    if (utilityPage && !hasExclusiveMemberOffers && !hasRewardsProgram) {
+        retailerCategory = 'ignore-utility-page';
+    } else if (hasRewardsProgram && (hasExclusiveMemberOffers || hasPublicDeals)) {
         retailerCategory = 'qualified-loyalty-retailer';
-    } else if (hasAccountAccess && !hasRewardsProgram) {
+    } else if (hasAccountAccess && hasRewardsProgram) {
+        retailerCategory = 'loyalty-retailer';
+    } else if (hasAccountAccess) {
         retailerCategory = 'account-only-retailer';
-    } else if (hasPublicDeals && !hasRewardsProgram) {
+    } else if (hasPublicDeals) {
         retailerCategory = 'sales-only-retailer';
     }
 
@@ -104,6 +142,7 @@ function classifySignals(url, title, text) {
         hasExclusiveMemberOffers,
         hasPublicDeals,
         retailerCategory,
+        utilityPage,
     };
 }
 
@@ -122,10 +161,13 @@ const crawler = new CheerioCrawler({
         const signals = classifySignals(url, title, bodyText);
 
         if (
-            signals.hasAccountAccess ||
-            signals.hasRewardsProgram ||
-            signals.hasExclusiveMemberOffers ||
-            signals.hasPublicDeals
+            signals.retailerCategory !== 'ignore-utility-page' &&
+            (
+                signals.hasAccountAccess ||
+                signals.hasRewardsProgram ||
+                signals.hasExclusiveMemberOffers ||
+                signals.hasPublicDeals
+            )
         ) {
             await Actor.pushData({
                 url,
@@ -137,6 +179,7 @@ const crawler = new CheerioCrawler({
                 hasExclusiveMemberOffers: signals.hasExclusiveMemberOffers,
                 hasPublicDeals: signals.hasPublicDeals,
                 retailerCategory: signals.retailerCategory,
+                utilityPage: signals.utilityPage,
                 evidence: bodyText.slice(0, 500),
             });
         }
