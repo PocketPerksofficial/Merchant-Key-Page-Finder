@@ -282,7 +282,6 @@ const crawler = new CheerioCrawler({
         const keepUtilityPage =
             !signals.utilityPage ||
             signals.strongUtilityOverride ||
-            signals.urlLooksLikePromoPage ||
             signals.hasExclusiveMemberOffers;
 
         if (
